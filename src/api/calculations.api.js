@@ -1,0 +1,53 @@
+import Vue from "vue";
+
+const axios = require('axios');
+import base from '@/api/base.api';
+const namespace = 'calculations';
+
+export default {
+    list: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/list${params.query || ''}`, params)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    save: (params = {}, onSuccess, onError) => {
+        return axios.post(`${base.baseUrl}/api/${namespace}/save`, params)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    delete: (params = {}, onSuccess, onError) => {
+        return axios.post(`${base.baseUrl}/api/${namespace}/delete`, { "_id" : params.id })
+            .then(onSuccess)
+            .catch(onError);
+    },
+    getVariables: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/variables`,)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    getCalculationsForFormula: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/retrieve/calculations${params.query || ''}`,)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    validateFormula: (params = {}, onSuccess, onError) => {
+        return axios.post(`${base.baseUrl}/api/${namespace}/formula/validate`,params)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    evaluateFormula: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/formula/evaluate`,)
+            .then(onSuccess)
+            .catch(onError);
+    },
+    retrieveSuppliers: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/retrieve/suppliers`,   params )
+            .then(onSuccess)
+            .catch(onError);
+    },
+    retrieveAdministrativeUnits: (params = {}, onSuccess, onError) => {
+        return axios.get(`${base.baseUrl}/api/${namespace}/retrieve/administrative-units`,   params )
+            .then(onSuccess)
+            .catch(onError);
+    }
+}

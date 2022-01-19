@@ -1,0 +1,140 @@
+stages:
+  - release
+#  - deploy
+
+build:
+  stage:           release
+  image:           docker:stable
+  extends:         .devops
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST:   tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker_login
+    - docker_build
+  artifacts:
+    paths:
+      - imageid.txt
+  only:
+    - master
+    - tags
+
+#heroku:
+#  stage:           deploy
+#  image:           docker:stable
+#  extends:         .devops
+#  services:
+#    - docker:dind
+#  variables:
+#    DOCKER_HOST:   tcp://docker:2375
+#    DOCKER_DRIVER: overlay2
+#    GIT_STRATEGY:  none
+#  script:
+#    - heroku_deploy
+#  only:
+#    - master
+#
+#prod:
+#  stage:           deploy
+#  image:           alpine
+#  variables:
+#    GIT_STRATEGY:  none
+#  extends:         .devops
+#  script:
+#    - deploy_prod
+#  only:
+#    - tags
+
+
+.devops:
+  before_script:
+    - |
+      function docker_login() {
+        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      }
+
+      function docker_build() {
+        case ${CI_COMMIT_REF_SLUG} in
+          master)
+            echo -e " \
+      API_HOST=$API_HOST_BETA \n \
+      API_PORT=$API_PORT_BETA \n \
+      VUE_APP_API_HOST=$VUE_APP_API_HOST_BETA \n \
+      VUE_APP_API_PORT=$VUE_APP_API_PORT_BETA" > .env.production
+            cat .env.production
+
+            docker build \
+              --iidfile imageid.txt \
+              --pull \
+              --build-arg VUE_APP_API_PORT_ARG=${VUE_APP_API_PORT_BETA} \
+              --build-arg VUE_APP_API_HOST_ARG=${VUE_APP_API_HOST_BETA} \
+              --build-arg API_PORT_ARG=${API_PORT_BETA} \
+              --build-arg API_HOST_ARG=${API_HOST_BETA} \
+              --cache-from ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG} \
+              -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG} .
+            docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+            ;;
+
+          *)
+            echo -e " \
+      API_HOST=$API_HOST_PROD \n \
+      API_PORT=$API_PORT_PROD \n \
+      VUE_APP_API_HOST=$VUE_APP_API_HOST_PROD \n \
+      VUE_APP_API_PORT=$VUE_APP_API_PORT_PROD" > .env.production
+            echo -e $KAREWA_CONF > src/karewaPlatform.info.js
+
+            docker build \
+              --iidfile imageid.txt \
+              --pull \
+              --build-arg VUE_APP_API_PORT_ARG=${VUE_APP_API_PORT_PROD} \
+              --build-arg VUE_APP_API_HOST_ARG=${VUE_APP_API_HOST_PROD} \
+              --build-arg API_PORT_ARG=${API_PORT_PROD} \
+              --build-arg API_HOST_ARG=${API_HOST_PROD} \
+              --cache-from ${CI_REGISTRY_IMAGE}:master \
+              -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG} .
+            docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+            docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG} ${CI_REGISTRY_IMAGE}:latest
+            docker push ${CI_REGISTRY_IMAGE}:latest
+            ;;
+        esac
+      }
+
+      function deploy_prod() {
+        apk add --update openssh-client
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo -e "Host karewa\n\tHostName $KAREWA_HOST_PROD\n\tPort $KAREWA_PORT_PROD\n\tUser $KAREWA_USER_PROD\nStrictHostKeyChecking no\n\n" > ~/.ssh/config
+        eval `ssh-agent -s`
+        ssh-add ~/.ssh/id_rsa
+        ssh -t karewa "docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+        ssh -t karewa \
+          "KAREWA_VERSION=${CI_COMMIT_REF_SLUG} \
+          VUE_APP_API_PORT=${VUE_APP_API_PORT_PROD} \
+          VUE_APP_API_HOST=${VUE_APP_API_HOST_PROD} \
+          API_PORT=${API_PORT_PROD} \
+          API_HOST=${API_HOST_PROD} \
+          SMTP_USER=${SMTP_USER} \
+          SMTP_PASS=${SMTP_PASS} \
+          SMTP_HOST=${SMTP_HOST} \
+          SMTP_ACCOUNT='${SMTP_ACCOUNT}' \
+          docker-compose up -d"
+        ssh -t karewa "docker system prune -af"
+      }
+
+      function heroku_deploy() {
+        apk add --update --no-cache curl
+        docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+        docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG} ${HEROKU_REGISTRY}
+        docker login -u _ -p ${HEROKU_API_KEY} registry.heroku.com
+        docker push ${HEROKU_REGISTRY}
+        curl \
+          -X PATCH \
+          https://api.heroku.com/apps/${HEROKU_APP}/formation \
+          --header "Content-Type: application/json" \
+          --header "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+          --header "Authorization: Bearer ${HEROKU_API_KEY}" \
+          --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat imageid.txt)'" } ] }'
+      }

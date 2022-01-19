@@ -1,0 +1,28 @@
+version:         "3"
+services:
+  app:
+    image:       roho2210/karewa:latest
+    ports:
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://db:27017/monitor_db
+      - SMTP_USER=$SMTP_USER
+      - SMTP_PASS=$SMTP_PASS
+      - SMTP_HOST=$SMTP_HOST
+      - SMTP_ACCOUNT=$SMTP_ACCOUNT
+      - VUE_APP_API_PORT=$VUE_APP_API_PORT
+      - VUE_APP_API_HOST=$VUE_APP_API_HOST
+      - API_PORT=$API_PORT
+      - API_HOST=$API_HOST
+    links:
+      - db
+    depends_on:
+      - db
+  db:
+    image:       mongo
+    volumes:
+      - db:/data/db
+
+volumes:
+  db:
