@@ -52,7 +52,7 @@
                         <h3>Bienvenido a</h3>
                         <h1>Monitor <strong>Karewa</strong></h1>
                         <div class="divider"></div>
-                        <p>Aquí podrás obtener información sobre los procedimientos de licitaciones para consultar la compra, renta y contratación de servicios que se realizan en el Municipio.</p>
+                        <p>Aquí podrás obtener información sobre los procedimientos de licitaciones para consultar la compra, renta y contratación de servicios que se realizan  .</p>
 
                     </div>
                     <div class="horizontal-center m-t-50">
@@ -142,7 +142,7 @@
             <div class="neutral-width">
                 <div class="col-12 p-0">
                     <div class="floating-title-panel small">
-                        <h1> Adquisiciones, Arrendamientos, Contratación de Servicios y Obra Pública del Municipio </h1>
+                        <h1> Adquisiciones, Arrendamientos, Contratación de Servicios y Obra Pública   </h1>
                     </div>
                 </div>
 
